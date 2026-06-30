@@ -5,12 +5,12 @@
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:api": "node server/index.js",
-    "build": "vite build",
+    "dev": "node init && vite",
+    "dev:api": "node init && node server/index.js",
+    "build": "node init && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "start": "node server/index.js"
+    "start": "node init && node server/index.js"
   },
   "dependencies": {
     "lucide-react": "^1.22.0",
