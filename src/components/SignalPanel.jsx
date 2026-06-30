@@ -30,6 +30,20 @@ export function SignalPanel({ analysis }) {
           Target {formatCurrency(analysis.takeProfit)}
         </span>
       </div>
+      <div className="model-context">
+        <span>
+          <strong>{analysis.contextLabel}</strong>
+          Context
+        </span>
+        <span>
+          <strong>{analysis.contextScore}%</strong>
+          Macro/news
+        </span>
+        <span>
+          <strong>{analysis.validationSamples}</strong>
+          Validation
+        </span>
+      </div>
       <div className="progress-row">
         <span>Confidence</span>
         <div className="progress-track">

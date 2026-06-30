@@ -3,10 +3,11 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { analyzeMarket } from '../engine/analysisEngine.js'
-import { getMarketCandles } from '../services/marketDataService.js'
+import { getMarketCandles, getMarketContext } from '../services/marketDataService.js'
 
 export const useMarketAnalysis = ({ market, timeframe } = {}) => {
   const [candles, setCandles] = useState([])
+  const [marketContext, setMarketContext] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -16,14 +17,18 @@ export const useMarketAnalysis = ({ market, timeframe } = {}) => {
     setLoading(true)
     setError('')
 
-    getMarketCandles({ market, timeframe })
-      .then((data) => {
-        if (mounted) setCandles(data)
+    Promise.all([getMarketCandles({ market, timeframe }), getMarketContext({ market, timeframe })])
+      .then(([data, context]) => {
+        if (mounted) {
+          setCandles(data)
+          setMarketContext(context)
+        }
       })
       .catch((requestError) => {
         if (mounted) {
           setError(requestError.message)
           setCandles([])
+          setMarketContext(null)
         }
       })
       .finally(() => {
@@ -35,7 +40,7 @@ export const useMarketAnalysis = ({ market, timeframe } = {}) => {
     }
   }, [market, timeframe])
 
-  const analysis = useMemo(() => (candles.length ? analyzeMarket(candles) : null), [candles])
+  const analysis = useMemo(() => (candles.length ? analyzeMarket(candles, marketContext) : null), [candles, marketContext])
   const chartData = useMemo(
     () =>
       candles.map((item, index) => ({

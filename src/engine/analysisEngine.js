@@ -33,7 +33,7 @@ export const calculateRSI = (values, period = 14) => {
   return values.length <= period ? null : avgLoss === 0 ? 100 : round(100 - 100 / (1 + relativeStrength))
 }
 
-export const analyzeMarket = (candles) => {
+export const analyzeMarket = (candles, marketContext = {}) => {
   const closes = candles.map((item) => item.close)
   const highs = candles.map((item) => item.high)
   const lows = candles.map((item) => item.low)
@@ -43,13 +43,14 @@ export const analyzeMarket = (candles) => {
   const ema12 = calculateEMA(closes, 12)
   const ema26 = calculateEMA(closes, 26)
   const rsi = calculateRSI(closes)
-  const model = trainMarketModel(candles)
+  const model = trainMarketModel(candles, marketContext)
   const support = round(Math.min(...lows.slice(-20)))
   const resistance = round(Math.max(...highs.slice(-20)))
   const momentum = round(((currentPrice - closes.at(-10)) / closes.at(-10)) * 100)
   const volatility = round(((resistance - support) / currentPrice) * 100)
   const volumeStrength = round((volumes.at(-1) / average(volumes.slice(-20))) * 100)
-  const riskScore = Math.min(100, Math.max(8, round(volatility * 8 + (rsi > 72 ? 18 : 0))))
+  const contextRisk = model.contextScore < -0.12 ? Math.abs(model.contextScore) * 22 : 0
+  const riskScore = Math.min(100, Math.max(8, round(volatility * 8 + (rsi > 72 ? 18 : 0) + contextRisk)))
   const signal = model.signal
   const entryMultiplier = { Buy: 0.997, Hold: 1, Sell: 1.003 }[signal]
   const stopMultiplier = { Buy: 0.982, Hold: 0.99, Sell: 1.018 }[signal]
@@ -83,8 +84,13 @@ export const analyzeMarket = (candles) => {
     volumeStrength,
     modelAccuracy: model.modelAccuracy,
     modelProbability: round(model.probability * 100),
+    rawModelProbability: round(model.rawProbability * 100),
     trainingSamples: model.trainingSamples,
-    marketStatus: volatility > 5 ? 'High activity' : 'Orderly',
+    validationSamples: model.validationSamples,
+    contextScore: round(model.contextScore * 100),
+    contextLabel: model.contextLabel,
+    newsImpact: model.newsImpact,
+    marketStatus: volatility > 5 || model.contextLabel === 'Cautious' ? 'High activity' : 'Orderly',
     recommendation: model.recommendation,
   }
 }

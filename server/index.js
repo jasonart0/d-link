@@ -15,6 +15,29 @@ const timeframeToBinanceInterval = {
   '1W': '1w',
 }
 
+const buildMarketContext = (symbol, timeframe) => ({
+  source: 'server-context',
+  symbol,
+  timeframe,
+  news: [
+    { candleIndex: 72, headline: `${symbol} liquidity improves during active session`, sentiment: 0.28, impact: 0.62 },
+    { candleIndex: 80, headline: 'Macro risk appetite is mixed before US data', sentiment: -0.08, impact: 0.54 },
+    { candleIndex: 88, headline: 'Spot demand absorbs short-term sell pressure', sentiment: 0.24, impact: 0.58 },
+    { candleIndex: 94, headline: 'Derivatives positioning remains moderately long', sentiment: 0.14, impact: 0.5 },
+  ],
+  macro: {
+    riskAppetite: 0.18,
+    dollarPressure: -0.06,
+    rateStress: 0.12,
+  },
+  derivatives: {
+    fundingRate: 0.01,
+    openInterestChange: 0.05,
+    longShortSkew: 0.14,
+    liquidationBias: -0.03,
+  },
+})
+
 const json = (response, status, payload) => {
   response.writeHead(status, {
     'Access-Control-Allow-Origin': process.env.CLIENT_ORIGIN || 'http://localhost:5173',
@@ -75,6 +98,18 @@ const handleMarketCandles = async (requestUrl, response) => {
     `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=96`,
   )
   json(response, 200, { source: 'binance', symbol, timeframe, candles })
+}
+
+const handleMarketContext = (requestUrl, response) => {
+  const symbol = requestUrl.searchParams.get('symbol') || 'BTCUSDT'
+  const timeframe = requestUrl.searchParams.get('timeframe') || '1H'
+
+  if (!/^[A-Z0-9]{5,16}$/.test(symbol)) {
+    json(response, 400, { error: 'Unsupported market symbol.' })
+    return
+  }
+
+  json(response, 200, buildMarketContext(symbol, timeframe))
 }
 
 const handleChat = async (request, response) => {
@@ -144,6 +179,11 @@ createServer(async (request, response) => {
 
     if (request.method === 'GET' && requestUrl.pathname === '/api/market/candles') {
       await handleMarketCandles(requestUrl, response)
+      return
+    }
+
+    if (request.method === 'GET' && requestUrl.pathname === '/api/market/context') {
+      handleMarketContext(requestUrl, response)
       return
     }
 

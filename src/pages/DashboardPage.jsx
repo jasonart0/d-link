@@ -54,8 +54,10 @@ function DashboardContent({ market, timeframe }) {
       { icon: Waves, label: 'Volatility', value: formatPercent(analysis.volatility), description: 'Range expansion index', tone: 'red' },
       { icon: Signal, label: 'Liquidity Score', value: `${analysis.liquidityScore}%`, description: 'Volume depth proxy', tone: 'blue' },
       { icon: BarChart4, label: 'Volume Strength', value: `${analysis.volumeStrength}%`, description: 'Relative participation', tone: 'violet' },
-      { icon: Brain, label: 'Model Accuracy', value: `${analysis.modelAccuracy}%`, description: `${analysis.trainingSamples} trained samples`, tone: 'violet' },
-      { icon: Gauge, label: 'Model Probability', value: `${analysis.modelProbability}%`, description: 'Next-candle upside probability', tone: 'blue' },
+      { icon: Brain, label: 'Model Accuracy', value: `${analysis.modelAccuracy}%`, description: `${analysis.validationSamples} validation samples`, tone: 'violet' },
+      { icon: Gauge, label: 'Model Probability', value: `${analysis.modelProbability}%`, description: `${analysis.rawModelProbability}% candle-only baseline`, tone: 'blue' },
+      { icon: Activity, label: 'Market Context', value: analysis.contextLabel, description: `${analysis.contextScore}% news and macro score`, tone: 'violet' },
+      { icon: Signal, label: 'News Impact', value: `${analysis.newsImpact}%`, description: 'Weighted headline influence', tone: 'blue' },
       { icon: Brain, label: 'AI Recommendation', value: analysis.signal, description: analysis.recommendation, tone: 'green' },
       { icon: Activity, label: 'Market Status', value: analysis.marketStatus, description: `${timeframe} observation window`, tone: 'blue' },
     ]

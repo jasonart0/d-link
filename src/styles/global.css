@@ -141,6 +141,9 @@ p { margin: 0; color: var(--muted); }
 .signal-hero strong { font-size: 42px; line-height: 1; }
 .trade-levels { display: grid; gap: 0; margin: 16px 0; border: 1px solid var(--border); border-bottom: 0; }
 .trade-levels span { gap: 8px; justify-content: space-between; padding: 12px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; color: var(--muted); }
+.model-context { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--border); border-right: 0; margin-bottom: 16px; }
+.model-context span { display: grid; gap: 4px; padding: 10px; border-right: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+.model-context strong { color: var(--text); font-size: 15px; overflow-wrap: anywhere; }
 .progress-row { display: grid; grid-template-columns: 86px 1fr 44px; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; }
 .progress-track { height: 8px; border-radius: 0; background: rgba(148,163,184,.16); overflow: hidden; }
 .progress-track i { display: block; height: 100%; border-radius: 0; background: linear-gradient(90deg, var(--green), var(--blue)); animation: grow .8s ease both; }
