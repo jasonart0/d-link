@@ -3,128 +3,203 @@
  */
 import {
   Activity,
-  ArrowDownRight,
-  ArrowUpRight,
   BadgeDollarSign,
   BarChart4,
   Brain,
   Gauge,
-  HandCoins,
+  History,
   LineChart,
   LockKeyhole,
-  Radar,
   ShieldAlert,
   Signal,
   Sparkles,
   Target,
   TrendingUp,
-  Waves,
-  Zap,
 } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { ChartPanel } from '../components/ChartPanel.jsx'
 import { ChatBotPanel } from '../components/ChatBotPanel.jsx'
 import { DashboardCard } from '../components/DashboardCard.jsx'
+import { MarketDataPanel } from '../components/MarketDataPanel.jsx'
+import { ModelStatsPanel } from '../components/ModelStatsPanel.jsx'
 import { Notification } from '../components/Notification.jsx'
+import { PredictionHistory } from '../components/PredictionHistory.jsx'
 import { SignalPanel } from '../components/SignalPanel.jsx'
-import { Skeleton } from '../components/Skeleton.jsx'
+import { TrainingMonitor } from '../components/TrainingMonitor.jsx'
+import { Dropdown } from '../components/Dropdown.jsx'
+import { timeframes } from '../constants/markets.js'
 import { DashboardLayout } from '../layouts/DashboardLayout.jsx'
-import { useMarketAnalysis } from '../hooks/useMarketAnalysis.js'
-import { formatCurrency, formatPercent } from '../utils/formatters.js'
+import { useTradingIntelligence } from '../hooks/useTradingIntelligence.js'
+import { formatCurrency } from '../utils/formatters.js'
 
-function DashboardContent({ market, timeframe }) {
-  const { analysis, chartData, error, loading } = useMarketAnalysis({ market, timeframe })
+const formatPrice = (value) => (Number.isFinite(Number(value)) ? formatCurrency(value) : 'No trade')
+
+const tabs = [
+  { id: 'overview', label: 'Overview', icon: Gauge },
+  { id: 'history', label: 'History', icon: History },
+  { id: 'training', label: 'Training', icon: Brain },
+  { id: 'assistant', label: 'Assistant', icon: Sparkles },
+]
+
+function DashboardContent({ market, timeframe, onTimeframeChange }) {
+  const [activeTab, setActiveTab] = useState('overview')
+  const {
+    actions,
+    history,
+    historyFilters,
+    latest,
+    market: marketData,
+    refreshAll,
+    runPrediction,
+    setHistoryFilters,
+    startTraining,
+    stats,
+    training,
+  } = useTradingIntelligence({ symbol: market, timeframe })
+  const prediction = latest.data
+  const candle = marketData.data
+
   const cards = useMemo(() => {
-    if (!analysis) return []
+    if (!prediction && !candle && !stats.data) return []
+    const targets = prediction?.targets || []
 
     return [
-      { icon: BadgeDollarSign, label: 'Current Price', value: formatCurrency(analysis.currentPrice), description: `${market} spot reference`, tone: 'blue' },
-      { icon: TrendingUp, label: 'Trend Direction', value: analysis.trend, description: analysis.marketDirection, tone: 'green' },
-      { icon: Brain, label: 'Market Sentiment', value: analysis.sentiment, description: 'Trained model output', tone: 'violet' },
-      { icon: ArrowUpRight, label: 'Buy Signal', value: analysis.buySignal, description: 'Model probability filter', tone: 'green' },
-      { icon: ArrowDownRight, label: 'Sell Signal', value: analysis.sellSignal, description: 'Model downside probability', tone: 'red' },
-      { icon: Gauge, label: 'Confidence Score', value: `${analysis.confidenceScore}%`, description: 'Training module confidence', tone: 'green' },
-      { icon: ShieldAlert, label: 'Risk Score', value: `${analysis.riskScore}%`, description: 'Volatility adjusted', tone: 'red' },
-      { icon: Target, label: 'Support', value: formatCurrency(analysis.support), description: 'Recent market floor', tone: 'blue' },
-      { icon: Radar, label: 'Resistance', value: formatCurrency(analysis.resistance), description: 'Recent supply zone', tone: 'violet' },
-      { icon: HandCoins, label: 'Entry Price', value: formatCurrency(analysis.entryPrice), description: 'Calculated entry area', tone: 'green' },
-      { icon: LockKeyhole, label: 'Stop Loss', value: formatCurrency(analysis.stopLoss), description: 'Capital protection level', tone: 'red' },
-      { icon: Sparkles, label: 'Take Profit', value: formatCurrency(analysis.takeProfit), description: 'Primary target level', tone: 'green' },
-      { icon: Zap, label: 'Momentum', value: formatPercent(analysis.momentum), description: 'Ten-candle impulse', tone: 'blue' },
-      { icon: Waves, label: 'Volatility', value: formatPercent(analysis.volatility), description: 'Range expansion index', tone: 'red' },
-      { icon: Signal, label: 'Liquidity Score', value: `${analysis.liquidityScore}%`, description: 'Volume depth proxy', tone: 'blue' },
-      { icon: BarChart4, label: 'Volume Strength', value: `${analysis.volumeStrength}%`, description: 'Relative participation', tone: 'violet' },
-      { icon: Brain, label: 'Model Accuracy', value: `${analysis.modelAccuracy}%`, description: `${analysis.validationSamples} validation samples`, tone: 'violet' },
-      { icon: Gauge, label: 'Model Probability', value: `${analysis.modelProbability}%`, description: `${analysis.rawModelProbability}% candle-only baseline`, tone: 'blue' },
-      { icon: Activity, label: 'Market Context', value: analysis.contextLabel, description: `${analysis.contextScore}% news and macro score`, tone: 'violet' },
-      { icon: Signal, label: 'News Impact', value: `${analysis.newsImpact}%`, description: 'Weighted headline influence', tone: 'blue' },
-      { icon: Brain, label: 'AI Recommendation', value: analysis.signal, description: analysis.recommendation, tone: 'green' },
-      { icon: Activity, label: 'Market Status', value: analysis.marketStatus, description: `${timeframe} observation window`, tone: 'blue' },
+      { icon: BadgeDollarSign, label: 'Gold Close', value: candle ? formatCurrency(candle.close) : '-', description: `${market} ${timeframe} candle`, tone: 'blue' },
+      { icon: TrendingUp, label: 'AI Direction', value: prediction?.direction || '-', description: 'Backend AI recommendation', tone: 'green' },
+      { icon: Target, label: 'Entry Price', value: formatPrice(prediction?.entry), description: 'API model entry level', tone: 'green' },
+      { icon: LockKeyhole, label: 'Stop Loss', value: formatPrice(prediction?.stopLoss), description: 'API model invalidation', tone: 'red' },
+      { icon: Target, label: 'Target 1', value: formatPrice(targets[0]), description: 'First profit objective', tone: 'green' },
+      { icon: Gauge, label: 'Confidence Score', value: `${prediction?.confidence ?? '-'}%`, description: 'AI output confidence', tone: 'blue' },
+      { icon: ShieldAlert, label: 'Risk Score', value: `${prediction?.risk ?? '-'}%`, description: 'AI output risk rating', tone: 'red' },
+      { icon: Brain, label: 'Trade Quality', value: `${prediction?.tradeQualityScore ?? '-'}%`, description: 'Composite setup quality', tone: 'violet' },
+      { icon: BarChart4, label: 'Expected Reward', value: prediction?.expectedReward || '-', description: 'Risk/reward projection', tone: 'blue' },
+      { icon: Activity, label: 'Market Bias', value: prediction?.marketBias || '-', description: 'AI market regime label', tone: 'violet' },
+      { icon: Signal, label: 'Win Rate', value: `${stats.data?.winRate ?? '-'}%`, description: 'Closed prediction win rate', tone: 'green' },
     ]
-  }, [analysis, market, timeframe])
+  }, [candle, market, prediction, stats.data, timeframe])
 
-  if (loading) {
-    return (
-      <div className="dashboard-page">
-        <div className="hero-band">
-          <Skeleton />
-        </div>
-      </div>
-    )
-  }
+  const chartData = useMemo(
+    () =>
+      (history.data || []).map((item) => ({
+        time: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : item.symbol,
+        confidence: item.confidence,
+        risk: item.risk,
+        quality: item.tradeQualityScore,
+      })),
+    [history.data],
+  )
 
-  if (!analysis) {
-    return (
-      <div className="dashboard-page">
-        <section className="hero-band">
-          <div>
-            <span className="eyebrow">{market} / {timeframe}</span>
-            <h1>Market data is not available.</h1>
-            <p>{error || 'Select another live market or check the API server connection.'}</p>
-          </div>
-        </section>
-      </div>
-    )
-  }
+  const chatAnalysis = useMemo(
+    () => ({
+      confidenceScore: prediction?.confidence,
+      currentPrice: candle?.close,
+      recommendation: prediction?.reason,
+      riskScore: prediction?.risk,
+      signal: prediction?.direction,
+      support: prediction?.entry,
+      trend: prediction?.marketBias,
+    }),
+    [candle, prediction],
+  )
 
   return (
     <div className="dashboard-page">
       <section className="hero-band">
         <div>
-          <span className="eyebrow">{market} / {timeframe}</span>
-          <h1>Live trading intelligence.</h1>
-          <p>Real API candles, trained signals, and ChatGPT context for the active setup.</p>
+          <div className="eyebrow hero-eyebrow">
+            <span>Gold trading only /</span>
+            <Dropdown label="Timeframe" value={timeframe} options={timeframes} onChange={onTimeframeChange} />
+          </div>
+          <h1>AI gold trading intelligence.</h1>
+          <p>Focused XAUUSD predictions, risk levels, training status, and gold candle data after every close.</p>
         </div>
         <div className="hero-stat">
           <LineChart size={28} aria-hidden="true" />
-          <strong>{analysis.signal}</strong>
-          <span>{analysis.confidenceScore}% confidence</span>
+          <strong>{prediction?.direction || 'WAIT'}</strong>
+          <span>{prediction?.confidence ? `${prediction.confidence}% confidence` : 'API pending'}</span>
         </div>
       </section>
 
       <Notification>
-        {error || 'Secure API architecture: market data and ChatGPT requests are served through the local backend proxy.'}
+        AI predictions are decision-support tools, not guaranteed financial advice. Always use proper risk management.
       </Notification>
 
-      <section className="metrics-grid">
-        {cards.map((card) => (
-          <DashboardCard key={card.label} {...card} />
+      <nav className="dashboard-tabs" aria-label="Dashboard modules">
+        {tabs.map(({ icon: Icon, id, label }) => (
+          <button
+            className={activeTab === id ? 'active' : ''}
+            key={id}
+            type="button"
+            onClick={() => setActiveTab(id)}
+          >
+            <Icon size={16} aria-hidden="true" />
+            <span>{label}</span>
+          </button>
         ))}
-      </section>
+      </nav>
 
-      <section className="analysis-grid">
-        <ChartPanel title="Price Chart" data={chartData} dataKey="close" />
-        <SignalPanel analysis={analysis} />
-      </section>
+      {activeTab === 'overview' ? (
+        <>
+          <section className="metrics-grid">
+            {cards.map((card) => (
+              <DashboardCard key={card.label} {...card} />
+            ))}
+          </section>
 
-      <ChatBotPanel analysis={analysis} market={market} timeframe={timeframe} />
+          <section className="analysis-grid">
+            <MarketDataPanel
+              candle={candle}
+              error={marketData.error}
+              loading={marketData.loading}
+              symbol={market}
+              timeframe={timeframe}
+            />
+            <SignalPanel
+              error={latest.error}
+              loading={latest.loading}
+              onRefresh={() => refreshAll()}
+              onRunPrediction={runPrediction}
+              prediction={prediction}
+              running={actions.prediction}
+            />
+          </section>
 
-      <section className="chart-grid">
-        <ChartPanel title="Trend Chart" type="line" data={chartData} dataKey="close" secondaryKey="open" />
-        <ChartPanel title="Volume Chart" type="bar" data={chartData} dataKey="volume" />
-        <ChartPanel title="Confidence History" type="line" data={chartData} dataKey="confidence" />
-        <ChartPanel title="Risk History" type="line" data={chartData} dataKey="risk" />
-      </section>
+          {chartData.length ? (
+            <section className="chart-grid">
+              <ChartPanel title="Confidence History" type="line" data={chartData} dataKey="confidence" />
+              <ChartPanel title="Risk History" type="line" data={chartData} dataKey="risk" />
+              <ChartPanel title="Trade Quality History" type="line" data={chartData} dataKey="quality" />
+            </section>
+          ) : null}
+        </>
+      ) : null}
+
+      {activeTab === 'history' ? (
+        <PredictionHistory
+          error={history.error}
+          filters={historyFilters}
+          loading={history.loading}
+          onFilterChange={setHistoryFilters}
+          predictions={history.data}
+        />
+      ) : null}
+
+      {activeTab === 'training' ? (
+        <section className="analysis-grid">
+          <TrainingMonitor
+            error={training.error}
+            loading={training.loading}
+            onStartTraining={startTraining}
+            starting={actions.training}
+            training={training.data}
+          />
+          <ModelStatsPanel error={stats.error} loading={stats.loading} stats={stats.data} />
+        </section>
+      ) : null}
+
+      {activeTab === 'assistant' ? (
+        <ChatBotPanel analysis={chatAnalysis} market={market} timeframe={timeframe} />
+      ) : null}
     </div>
   )
 }
