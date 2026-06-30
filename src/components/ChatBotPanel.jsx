@@ -53,7 +53,7 @@ export function ChatBotPanel({ analysis, market, timeframe }) {
   return (
     <section className="chat-panel">
       <div className="panel-head">
-        <h2>ChatGPT Market Bot</h2>
+        <h2>Gold AI Assistant</h2>
         <span>{loading ? 'Thinking' : 'Live API ready'}</span>
       </div>
       <div className="chat-thread" aria-live="polite">
